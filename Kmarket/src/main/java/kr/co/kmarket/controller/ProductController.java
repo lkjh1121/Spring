@@ -19,6 +19,7 @@ import kr.co.kmarket.service.ProductService;
 import kr.co.kmarket.vo.CartVo;
 import kr.co.kmarket.vo.CategoriesVo;
 import kr.co.kmarket.vo.MemberVo;
+import kr.co.kmarket.vo.OrderVo;
 import kr.co.kmarket.vo.ProductVo;
 
 @SessionAttributes("sessMember")
@@ -52,6 +53,17 @@ public class ProductController {
 	}
 	
 	@ResponseBody
+	@GetMapping("/product/cartDelete")
+	public Map<String, Integer> cartDelete(int[] cids) {
+		int result = service.deleteCart(cids);
+		
+		Map<String, Integer> map = new HashMap<>();
+		map.put("result", result);
+		
+		return map;
+	}
+	
+	@ResponseBody
 	@PostMapping("/product/cart")
 	public Map<String, Integer> cart(CartVo vo) {
 		
@@ -64,10 +76,7 @@ public class ProductController {
 		return jsonData;
 	}
 	
-	@GetMapping("/product/complete")
-	public String complete() {
-		return "/product/complete";
-	}
+	
 	
 	@GetMapping("/product/list")
 	public String list(ProductVo vo, Model model) {
@@ -100,14 +109,60 @@ public class ProductController {
 		
 		return "/product/view";
 	}
+	
 	@GetMapping("/product/order")
-	public String order() {
+	public String order(int oid, Model model) {
+		
+		List<OrderVo> orders = service.selectOrders(oid);
+		model.addAttribute("orders", orders);
+		model.addAttribute("order", orders.get(0));
+		
 		return "/product/order";
 	}
+	
+	@ResponseBody
+	@PostMapping("/product/order")
+	public Map<String, Integer> order(OrderVo vo) {
+		
+		// 주문장 등록
+		int oid = service.insertOrder(vo);
+		
+		// 개별 상품 등록
+		int[] counts = vo.getCounts();
+		int i = 0;
+		for(int pid : vo.getPids()) {
+			service.insertOrderDetail(oid, pid, counts[i]);
+			i++;
+		}
+		
+		Map<String, Integer> map = new HashMap<>();
+		map.put("result", oid);
+		
+		return map;
+	}
+	
+	@ResponseBody
+	@PostMapping("/product/complete")
+	public Map<String, Integer> complete(OrderVo vo) {
+		
+		service.updateOrder(vo);
+		
+		int oid = vo.getOid();
+		
+		Map<String, Integer> map = new HashMap<>();
+		map.put("result", oid);
+		
+		return map;
+	}
+	
+	@GetMapping("/product/complete")
+	public String complete() {
+		return "/product/complete";
+	}
+	
+	
 	@GetMapping("/product/search")
 	public String search() {
 		return "/product/search";
 	}
-	
-	
 }

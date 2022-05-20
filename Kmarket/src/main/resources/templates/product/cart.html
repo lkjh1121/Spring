@@ -12,6 +12,227 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/bxslider/4.2.12/jquery.bxslider.css">
     <link rel="stylesheet" th:href="@{/css/common.css}"/>
     <link rel="stylesheet" th:href="@{/css/product/product.css}"/>
+    <script>
+	    $(function(){
+	    	
+	    	function aggregation(){
+				////////////////////////////////////
+				// 장바구니 전체합계
+				////////////////////////////////////
+				let total = $('.cart > form > .total'); 
+				let trs = $('input[name=productChk]:checked').parent().parent();
+				    		
+				// 상품 수 합계
+				let counts = trs.find('.count');
+				let totCount = 0;
+				
+				$.each(counts, function(){
+					let count = parseInt($(this).text());
+					totCount += count;    			
+				});
+				
+				//console.log('totCount : '+totCount);
+				total.find('.count').text(totCount+'개');
+				
+				// 상품금액 합계
+				let prices = trs.find('.price');
+				let totPrice = 0;
+				
+				$.each(prices, function(){
+					let count = parseInt($(this).prev().text().replace(/,/g, ''));
+					let price = parseInt($(this).text().replace(/,/g, ''));
+					totPrice += (price * count);    			
+				});
+				
+				//console.log('totPrice : '+totPrice);
+				total.find('.price').text(totPrice.toLocaleString()+'원');
+				
+				// 할인금액 합계
+				let discounts = trs.find('.discount');
+				let totDiscount = 0;
+				
+				$.each(discounts, function(){
+					let price = parseInt($(this).prev().text().replace(/,/g, ''));
+					let discount = parseInt($(this).text().replace(/%/g, ''));
+					
+					totDiscount += (price * discount / 100);				
+				});
+				
+				console.log('totDiscount : '+totDiscount);
+				total.find('.discount').text(totDiscount.toLocaleString()+'원');
+				
+				// 배송비 합계
+				let deliveries = trs.find('.delivery');
+				let totDelivery = 0;
+				
+				$.each(deliveries, function(){
+					let delivery = $(this).text().replace(/,/g, '');
+					
+					if(delivery != '무료배송'){
+						totDelivery += parseInt(delivery);	
+					}			
+				});
+				
+				//console.log('totPrice : '+totPrice);
+				total.find('.delivery').text(totDelivery.toLocaleString()+'원');
+				
+				// 포인트 합계
+				let points = trs.find('.point');
+				let totPoint = 0;
+				
+				$.each(points, function(){
+					let point = parseInt($(this).text().replace(/,/g, ''));
+					totPoint += point;	
+				});
+				
+				//console.log('totPrice : '+totPrice);
+				total.find('.point').text(totPoint.toLocaleString()+'점');
+				
+				
+				// 전체주문금액 합계
+				let totals = trs.find('.total');
+				let totTotal = 0;
+				
+				$.each(totals, function(){
+					let total = parseInt($(this).text().replace(/,/g, ''));
+					totTotal += total;	
+				});
+				
+				//console.log('totPrice : '+totPrice);
+				total.find('.total').text(totTotal.toLocaleString()+'원');
+	    	} // aggregation end
+	    	
+	    	// 집계 실행
+	    	aggregation();
+	    	
+			////////////////////////////////////
+			// 장바구니 체크박스 전체 선택/해제
+			////////////////////////////////////
+			let checkAll = $('input[name=all]');
+			
+			checkAll.change(function(){
+				let isChecked = $(this).is(':checked');	
+				
+				if(isChecked){
+					// 체크됨 --> 전체상품 선택
+					$('input[name=productChk]').prop('checked', true);					
+				}else{
+					// 체크안됨 --> 전체상품 해제
+					$('input[name=productChk]').prop('checked', false);					
+				}
+				
+				// 집계 실행
+				aggregation();				
+			});
+			
+			////////////////////////////////////
+			// 장바구니 체크박스 개별 선택/해제
+			////////////////////////////////////
+			let checkProducts = $('input[name=productChk]');
+			
+			checkProducts.change(function(){
+				// 집계 실행
+				aggregation();				
+			});
+			
+			////////////////////////////////////
+			// 장바구니 삭제
+			////////////////////////////////////
+			$('input[name=del]').click(function(){
+				
+				let productChk = $('input[name=productChk]:checked');
+				let cids = [];
+				
+				if(productChk.length == 0){
+					alert('삭제할려는 상품을 선택하세요.');
+					return;
+				}
+				
+				$.each(productChk, function(){
+					cids.push($(this).val());
+				});
+				
+				console.log(cids);
+				let jsonData = {"cids": cids};
+				
+				$.ajax({
+					url:'/product/cartDelete',
+					type:'get',
+					traditional: true,  /* 배열을 전송을 위한 옵션 */
+					data: jsonData,
+					dataType:'json',
+					success: function(data){
+						//alert(data.result);
+						location.href='/product/cart';						
+					}
+				});
+				
+			});
+			
+			////////////////////////////////////
+			// 주문하기 클릭
+			////////////////////////////////////
+			$('input[name=order]').click(function(e){
+				e.preventDefault();
+				
+				let productChk = $('input[name=productChk]:checked');
+				let cids = [];
+				let pids = [];
+				let counts = [];
+				
+				if(productChk.length == 0){
+					alert('주문할려는 상품을 선택하세요.');
+					return;
+				}
+				
+				$.each(productChk, function(){
+					cids.push($(this).val());
+					pids.push($(this).data('pid'));
+					counts.push($(this).data('count'));
+				});
+				
+				console.log(cids);
+				
+				let uid      = $('.total input[name=uid]').val();
+				let count    = $('.total .count').text().replace(/(,|개)/g, '');
+				let price    = $('.total .price').text().replace(/(,|원)/g, '');
+				let discount = $('.total .discount').text().replace(/(,|원)/g, '');
+				let delivery = $('.total .delivery').text().replace(/(,|원)/g, '');
+				let point    = $('.total .point').text().replace(/(,|점)/g, '');
+				let total    = $('.total .total').text().replace(/(,|원)/g, '');
+				
+				let jsonData = {
+					"uid": uid,
+					"count": count,
+					"price": price,
+					"discount": discount,
+					"delivery": delivery,
+					"point": point,
+					"total": total,
+					"cids": cids,
+					"pids": pids,
+					"counts": counts
+				};
+					
+				console.log(JSON.stringify(jsonData));
+				
+				$.ajax({
+					url:'/product/order',
+					type: 'post',
+					traditional: true,
+					data: jsonData,
+					dataType: 'json',
+					success: function(data){
+						//주문페이지 이동
+						location.href='/product/order?oid='+data.result;
+					}
+				});
+			});
+			
+		});
+    </script>
+    
+    
 </head>
 <body>
     <div id="wrapper">
@@ -38,7 +259,7 @@
                 <table>
                   <thead>
                     <tr>
-                      <th><input type="checkbox" name="all"></th>
+                      <th><input type="checkbox" name="all" checked></th>
                       <th>상품명</th>
                       <th>총수량</th>
                       <th>판매가</th>
@@ -54,7 +275,13 @@
                     </tr>
                     
                     <tr th:each="product:${carts}">
-                      <td><input type="checkbox" name=""></td>
+                      <td><input type="checkbox" 
+                      			 name="productChk" 
+                      			 th:value="${product.cid}" 
+                      			 th:data-pid="${product.pid}" 
+                      			 th:data-count="${product.count}" 
+                      			 checked/>
+					  </td>
                       <td>
                         <article>
                           <a href="#">
@@ -65,48 +292,50 @@
                           </div>
                         </article>
                       </td>
-                      <td>[[${product.count}]]</td>
-                      <td>[[${#numbers.formatInteger(product.price, 3, 'COMMA')}]]</td>
-                      <td>[[${product.discount}]]%</td>
-                      <td>[[${product.point}]]</td>
-                      <td th:if="${product.delivery == 0}">무료배송</td>
-                      <td th:if="${product.delivery != 0}">[[${#numbers.formatInteger(product.delivery, 3, 'COMMA')}]]</td>
-                      <td>[[${#numbers.formatInteger(product.total, 3, 'COMMA')}]]</td>
+                      <td class="count">[[${product.count}]]</td>
+                      <td class="price">[[${#numbers.formatInteger(product.price, 3, 'COMMA')}]]</td>
+                      <td class="discount">[[${product.discount}]]%</td>
+                      <td class="point">[[${product.point}]]</td>
+                      <td class="delivery" th:if="${product.delivery == 0}">무료배송</td>
+                      <td class="delivery" th:if="${product.delivery != 0}">[[${#numbers.formatInteger(product.delivery, 3, 'COMMA')}]]</td>
+                      <td class="total">[[${#numbers.formatInteger(product.total, 3, 'COMMA')}]]</td>
                     </tr>
                   </tbody>
                 </table>
-                <input type="button" name="del" value="선택삭제">
+                <input type="button" name="del" value="선택삭제"/>
 
                 <!-- 장바구니 전체합계 -->
                 <div class="total">
+                  <input type="hidden" name="uid" th:value="${sessMember.uid}"/>
+                
                   <h2>전체합계</h2>
                   <table border="0">
                     <tr>
                       <td>상품수</td>
-                      <td>1</td>
+                      <td class="count">0</td>
                     </tr>
                     <tr>
                       <td>상품금액</td>
-                      <td>27,000</td>
+                      <td class="price">0</td>
                     </tr>
                     <tr>
                       <td>할인금액</td>
-                      <td>-1,000</td>
+                      <td class="discount">0</td>
                     </tr>
                     <tr>
                       <td>배송비</td>
-                      <td>0</td>
+                      <td class="delivery">0</td>
                     </tr>              
                     <tr>
                       <td>포인트</td>
-                      <td>260</td>
+                      <td class="point">0</td>
                     </tr>
                     <tr>
                       <td>전체주문금액</td>
-                      <td>26,000</td>
+                      <td class="total">0</td>
                     </tr>
                   </table>
-                  <input type="submit" name="" value="주문하기">    
+                  <input type="submit" name="order" value="주문하기">    
                 </div>
 
               </form>
